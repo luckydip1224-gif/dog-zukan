@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>社内犬図鑑</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&family=Shippori+Mincho:wght@400;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #fffbf4; font-family: 'Noto Serif JP', serif; min-height: 100vh; }
+
+    #header { background: #fff8ee; padding: 36px 40px 28px; border-bottom: 4px solid #e8a040; text-align: center; }
+    #header .subtitle { font-size: 10px; color: #d08030; letter-spacing: 0.35em; font-family: monospace; margin-bottom: 10px; }
+    #header h1 { font-size: clamp(26px, 5vw, 50px); font-weight: 900; color: #3a2008; letter-spacing: 0.2em; font-family: 'Shippori Mincho', serif; }
+    #header .count { font-size: 11px; color: #b07830; margin-top: 8px; letter-spacing: 0.15em; font-family: monospace; }
+
+    #controls { background: #fff3e0; border-bottom: 1px solid #f0d8a0; padding: 14px 40px; }
+    #controls input { width: 100%; max-width: 400px; background: #fff; border: 1px solid #c8bfb0; border-radius: 3px; padding: 9px 14px; font-size: 13px; color: #2a1f14; font-family: 'Noto Serif JP', serif; outline: none; }
+
+    #grid { max-width: 1060px; margin: 0 auto; padding: 32px 40px 60px; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 22px; }
+
+    .card { background: #fff; border: 1px solid #d0c8bc; border-radius: 4px; overflow: hidden; cursor: pointer; transition: box-shadow 0.2s, transform 0.2s; box-shadow: 2px 2px 0 #d0c8bc; font-family: 'Shippori Mincho', 'Noto Serif JP', serif; }
+    .card:hover { transform: translate(-2px, -2px); }
+    .card-photo { position: relative; aspect-ratio: 1; background: #fef3e2; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .card-photo img { width: 100%; height: 100%; object-fit: cover; }
+    .card-photo .badge { position: absolute; top: 8px; left: 8px; color: #fff; font-size: 10px; font-weight: 700; font-family: monospace; padding: 2px 8px; border-radius: 2px; }
+    .card-body { padding: 12px 14px 14px; }
+    .card-breed-en { font-size: 10px; color: #aaa; letter-spacing: 0.1em; margin-bottom: 2px; font-family: monospace; }
+    .card-breed { font-size: 16px; font-weight: 700; color: #2a1f14; margin-bottom: 4px; }
+    .card-person { font-size: 15px; font-weight: 800; margin-bottom: 10px; letter-spacing: 0.05em; font-family: 'Shippori Mincho', serif; }
+    .card-traits { display: flex; gap: 5px; flex-wrap: wrap; }
+    .trait-tag { font-size: 10px; padding: 2px 8px; border-radius: 2px; border: 1px solid; }
+
+    #modal-overlay { display: none; position: fixed; inset: 0; background: rgba(20,12,4,0.7); backdrop-filter: blur(5px); align-items: center; justify-content: center; z-index: 200; padding: 20px; }
+    #modal-overlay.open { display: flex; }
+    #modal { background: #fff; border: 1px solid #c8bfb0; border-radius: 6px; max-width: 660px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 10px 10px 0 rgba(0,0,0,0.18); font-family: 'Shippori Mincho', 'Noto Serif JP', serif; }
+    #modal-header { padding: 14px 24px; border-bottom: 1px solid #e0d8cc; display: flex; justify-content: space-between; align-items: center; background: #fff8ee; }
+    #modal-breadcrumb { font-size: 11px; color: #aaa; font-family: monospace; letter-spacing: 0.15em; }
+    #modal-close { background: none; border: 1px solid #c8bfb0; width: 28px; height: 28px; border-radius: 50%; font-size: 16px; cursor: pointer; color: #888; flex-shrink: 0; }
+    #modal-body { display: grid; grid-template-columns: 210px 1fr; }
+    #modal-left { border-right: 1px solid #e0d8cc; background: #fff8ee; }
+    #photo-wrap { position: relative; width: 100%; aspect-ratio: 1; background: #fef0da; overflow: hidden; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    #photo-wrap img { width: 100%; height: 100%; object-fit: cover; display: none; }
+    #photo-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0); transition: background 0.2s; display: flex; align-items: center; justify-content: center; }
+    #photo-wrap:hover #photo-overlay { background: rgba(0,0,0,0.42); }
+    #photo-btn { color: #fff; font-size: 12px; font-weight: 700; font-family: monospace; padding: 6px 16px; border-radius: 3px; letter-spacing: 0.05em; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+    #photo-wrap:hover #photo-btn { opacity: 1; }
+    #photo-input { display: none; }
+    #modal-stats { padding: 20px 18px; }
+    .stats-title { font-size: 9px; color: #aaa; letter-spacing: 0.15em; font-family: monospace; margin-bottom: 12px; }
+    .stat-row { margin-bottom: 12px; }
+    .stat-label { font-size: 11px; color: #6a5a4a; margin-bottom: 5px; }
+    .stat-dots { display: flex; gap: 5px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .photo-hint { margin-top: 10px; font-size: 10px; color: #bbb; text-align: center; line-height: 1.5; }
+    #modal-right { padding: 28px 30px; }
+    #modal-breed-en { font-size: 11px; color: #ccc; letter-spacing: 0.15em; font-family: monospace; margin-bottom: 4px; }
+    #modal-breed { font-size: 30px; font-weight: 900; color: #1a1008; letter-spacing: 0.08em; margin-bottom: 4px; }
+    #modal-person { font-size: 20px; font-weight: 800; letter-spacing: 0.08em; font-family: 'Shippori Mincho', serif; padding-bottom: 16px; margin-bottom: 24px; }
+    .section-title { font-size: 9px; color: #aaa; letter-spacing: 0.15em; font-family: monospace; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px dashed #ddd5c8; }
+    #modal-traits { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 22px; }
+    .modal-trait { font-size: 12px; padding: 4px 12px; border-radius: 2px; border: 1px solid; }
+    #modal-personality { font-size: 13px; line-height: 2; color: #3a2a1a; margin-bottom: 22px; }
+    #modal-reason-wrap { margin-top: 22px; }
+    #modal-reason { font-size: 13px; line-height: 2; color: #3a2a1a; padding: 12px 14px; border-radius: 0 4px 4px 0; border-left: 3px solid; }
+    .empty { grid-column: 1/-1; text-align: center; padding: 60px; color: #a09080; font-size: 14px; }
+
+    @media (max-width: 560px) {
+      #modal-body { grid-template-columns: 1fr; }
+      #modal-left { border-right: none; border-bottom: 1px solid #e0d8cc; }
+      #photo-wrap { aspect-ratio: 16/9; }
+      #grid, #controls, #header { padding-left: 16px; padding-right: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <div class="subtitle">━━  ILLUSTRATED COMPENDIUM  ━━</div>
+  <h1>社内犬図鑑</h1>
+  <div class="count" id="count-label"></div>
+</div>
+
+<div id="controls">
+  <input type="text" id="search" placeholder="犬種・人名・特徴で検索..." oninput="renderGrid()" />
+</div>
+
+<div id="grid"></div>
+
+<div id="modal-overlay" onclick="handleOverlayClick(event)">
+  <div id="modal">
+    <div id="modal-header">
+      <span id="modal-breadcrumb"></span>
+      <button id="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div id="modal-body">
+      <div id="modal-left">
+        <div id="photo-wrap" onclick="document.getElementById('photo-input').click()">
+          <img id="modal-photo-img" alt="dog photo" />
+          <div id="ph-icon" style="font-size:40px">🐾</div>
+          <div id="ph-label" style="font-size:10px;color:#b0a090;margin-top:4px">写真未設定</div>
+          <div id="photo-overlay">
+            <div id="photo-btn">📷 写真を変更</div>
+          </div>
+        </div>
+        <input type="file" id="photo-input" accept="image/*" onchange="handlePhotoUpload(event)" />
+        <div id="modal-stats">
+          <div class="stats-title">— STATS —</div>
+          <div id="stats-rows"></div>
+          <div class="photo-hint">↑ 写真にカーソルで変更</div>
+        </div>
+      </div>
+      <div id="modal-right">
+        <div id="modal-breed-en"></div>
+        <div id="modal-breed"></div>
+        <div id="modal-person"></div>
+        <div class="section-title">— 性格・特徴 —</div>
+        <div id="modal-traits"></div>
+        <div class="section-title">— 解説 —</div>
+        <p id="modal-personality"></p>
+        <div id="modal-reason-wrap">
+          <div class="section-title">— 選定理由 —</div>
+          <p id="modal-reason"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DOGS = [
+  { id:"001", personName:"田中 誠一", breed:"秋田犬", breedEn:"Akita Inu",
+    traits:["威厳がある","忠誠心が高い","おやつに弱い","朝一番に吠える"],
+    personality:"廊下を歩くだけで後輩が道を開ける圧倒的な存在感。差し入れのシュークリームの前では目がとろける。会議では必ず「昔はな…」から語り始める。",
+    reason:"日本犬の中で最も威厳があり、忠誠心が高い秋田犬。その堂々たる佇まいと「ボスオーラ」が田中部長にぴったりだと満場一致で決定。",
+    stats:{エネルギー:3,忠誠心:5,吠え度:4,社交性:3}, accent:"#8B4513", photo:null },
+  { id:"002", personName:"鈴木 健太", breed:"柴犬", breedEn:"Shiba Inu",
+    traits:["マイペース","テリトリー意識強め","ツンデレ","急に懐く"],
+    personality:"自分のコードへの絶対的な自信を持つ。他人がリポジトリを触ると微妙な顔をする。しかしランチに誘うと意外とすぐついてくる不思議な犬。",
+    reason:"一匹狼でマイペース、でも懐くと離れない柴犬の気質が鈴木さんそのもの。「うちの子感」が強いところも一致している。",
+    stats:{エネルギー:2,忠誠心:4,吠え度:3,社交性:2}, accent:"#C0611A", photo:null },
+  { id:"003", personName:"山田 里奈", breed:"ゴールデンレトリバー", breedEn:"Golden Retriever",
+    traits:["誰にでも優しい","傾聴力抜群","天然","社内人気No.1"],
+    personality:"社内で一番相談される存在。話を最後まで笑顔で聞いてくれる。ただし人の名前を呼び間違えることが多く、本人はまったく気にしていない。",
+    reason:"誰にでも全力でフレンドリー、笑顔が絶えないゴールデンレトリバーは山田さんの人柄そのまま。全員が「これしかない」と即決した。",
+    stats:{エネルギー:5,忠誠心:5,吠え度:1,社交性:5}, accent:"#C8920A", photo:null },
+  { id:"004", personName:"佐藤 拓海", breed:"チワワ", breedEn:"Chihuahua",
+    traits:["元気いっぱい","主張が強い","緊張すると震える","プレゼンで豹変"],
+    personality:"体は一番小さいのに声が一番大きい。プレゼン本番になると急に堂々とし始める謎の変身能力を持つ。コーヒーを飲むと明らかに加速する。",
+    reason:"「小さいのに存在感が最大」というチワワの特徴が佐藤くんを完璧に表現。プレゼン中の豹変ぶりもチワワの気の強さと一致。",
+    stats:{エネルギー:5,忠誠心:3,吠え度:5,社交性:4}, accent:"#7B4F9E", photo:null },
+  { id:"005", personName:"中村 剛", breed:"ダルメシアン", breedEn:"Dalmatian",
+    traits:["規則に厳しい","存在感がある","意外とお茶目","白黒はっきり"],
+    personality:"提出書類のフォーマットが少しでもズレると必ず指摘する。手順書と規則を愛している。だが金曜の飲み会では社内で一番はしゃいでいる。",
+    reason:"白黒はっきりした模様＝白黒はっきりした性格、という直感的な一致が決め手。見た目のインパクトと存在感も中村係長にぴったり。",
+    stats:{エネルギー:3,忠誠心:5,吠え度:4,社交性:3}, accent:"#2C2C2C", photo:null },
+  { id:"006", personName:"伊藤 彩", breed:"シベリアンハスキー", breedEn:"Siberian Husky",
+    traits:["クールな見た目","実は情熱的","深夜残業の遠吠え","Slackスタンプ収集家"],
+    personality:"いつも涼しい顔でデスクに座っているが、締め切り前は誰より気合が入る。Slackのスタンプコレクションが社内No.1。フィードバックは一言で的確。",
+    reason:"クールな見た目の裏に熱い魂を秘めるハスキーの二面性が伊藤さんそのもの。青い瞳のような鋭い審美眼も一致している。",
+    stats:{エネルギー:4,忠誠心:4,吠え度:2,社交性:3}, accent:"#2E6DA4", photo:null },
+];
+
+let currentDogId = null;
+document.getElementById('count-label').textContent = DOGS.length + ' 種収録 — 第一版';
+
+function alphaHex(hex, a) {
+  return hex + Math.round(a*255).toString(16).padStart(2,'0');
+}
+
+function makeDots(value, accent) {
+  return Array.from({length:5}).map((_,i) => {
+    const on = i < value;
+    return `<div class="dot" style="background:${on?accent:'#ddd5c8'};border:1px solid ${on?accent:'#c8bfb0'}"></div>`;
+  }).join('');
+}
+
+function renderGrid() {
+  const q = document.getElementById('search').value;
+  const grid = document.getElementById('grid');
+  const filtered = DOGS.filter(d =>
+    !q || d.breed.includes(q) || d.personName.includes(q) || d.traits.some(t => t.includes(q))
+  );
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="empty">🐾 該当する犬が見つかりませんでした</div>';
+    return;
+  }
+  grid.innerHTML = filtered.map(dog => `
+    <div class="card" onclick="openModal('${dog.id}')"
+      onmouseenter="this.style.boxShadow='4px 4px 0 ${dog.accent}70';this.style.transform='translate(-2px,-2px)'"
+      onmouseleave="this.style.boxShadow='2px 2px 0 #d0c8bc';this.style.transform=''"
+    >
+      <div class="card-photo">
+        ${dog.photo
+          ? `<img src="${dog.photo}" alt="${dog.breed}">`
+          : `<div style="font-size:40px">🐾</div><div style="font-size:10px;color:#b0a090;margin-top:4px">写真未設定</div>`}
+        <div class="badge" style="background:${dog.accent}">No.${dog.id}</div>
+      </div>
+      <div class="card-body" style="border-top:3px solid ${dog.accent}">
+        <div class="card-breed-en">${dog.breedEn.toUpperCase()}</div>
+        <div class="card-breed">${dog.breed}</div>
+        <div class="card-person" style="color:${dog.accent}">${dog.personName}</div>
+        <div class="card-traits">
+          ${dog.traits.slice(0,2).map(t =>
+            `<span class="trait-tag" style="background:${alphaHex(dog.accent,0.09)};color:${dog.accent};border-color:${alphaHex(dog.accent,0.25)}">${t}</span>`
+          ).join('')}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function openModal(id) {
+  const dog = DOGS.find(d => d.id === id);
+  if (!dog) return;
+  currentDogId = id;
+
+  document.getElementById('modal').style.borderTopWidth = '6px';
+  document.getElementById('modal').style.borderTopStyle = 'solid';
+  document.getElementById('modal').style.borderTopColor = dog.accent;
+  document.getElementById('modal-breadcrumb').textContent = `社内犬図鑑 ▸ No.${dog.id} ▸ ${dog.breed}`;
+
+  const img = document.getElementById('modal-photo-img');
+  const icon = document.getElementById('ph-icon');
+  const lbl  = document.getElementById('ph-label');
+  if (dog.photo) {
+    img.src = dog.photo; img.style.display = 'block';
+    icon.style.display = 'none'; lbl.style.display = 'none';
+  } else {
+    img.style.display = 'none';
+    icon.style.display = 'block'; lbl.style.display = 'block';
+  }
+  document.getElementById('photo-btn').style.background = dog.accent;
+
+  document.getElementById('modal-breed-en').textContent = dog.breedEn.toUpperCase();
+  document.getElementById('modal-breed').textContent = dog.breed;
+  const person = document.getElementById('modal-person');
+  person.textContent = dog.personName;
+  person.style.color = dog.accent;
+  person.style.borderBottom = `2px solid ${alphaHex(dog.accent, 0.2)}`;
+
+  document.getElementById('stats-rows').innerHTML = Object.entries(dog.stats).map(([k,v]) =>
+    `<div class="stat-row"><div class="stat-label">${k}</div><div class="stat-dots">${makeDots(v,dog.accent)}</div></div>`
+  ).join('');
+
+  document.getElementById('modal-traits').innerHTML = dog.traits.map(t =>
+    `<span class="modal-trait" style="background:${alphaHex(dog.accent,0.09)};color:${dog.accent};border-color:${alphaHex(dog.accent,0.27)}">${t}</span>`
+  ).join('');
+
+  document.getElementById('modal-personality').textContent = dog.personality;
+
+  const reason = document.getElementById('modal-reason');
+  reason.textContent = dog.reason;
+  reason.style.background = alphaHex(dog.accent, 0.07);
+  reason.style.borderLeftColor = dog.accent;
+
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  currentDogId = null;
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+function handlePhotoUpload(e) {
+  const file = e.target.files[0];
+  if (!file || !currentDogId) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const dog = DOGS.find(d => d.id === currentDogId);
+    if (!dog) return;
+    dog.photo = ev.target.result;
+    const img = document.getElementById('modal-photo-img');
+    img.src = dog.photo; img.style.display = 'block';
+    document.getElementById('ph-icon').style.display = 'none';
+    document.getElementById('ph-label').style.display = 'none';
+    renderGrid();
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
+renderGrid();
+</script>
+</body>
+</html>
